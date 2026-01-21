@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Neurovex AI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f7f7f8;
+    color: #0f172a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    transition: background 0.3s, color 0.3s;
+  }
+  body.dark { background: #0b0f14; color: #e5e7eb; }
+
+  .chat-container {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    height: 90vh;
+    background: #fff;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    transition: background 0.3s, color 0.3s;
+  }
+  body.dark .chat-container { background: #0f172a; color: #e5e7eb; }
+
+  .header {
+    padding: 15px;
+    font-size: 20px;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+    background: #f1f1f1;
+  }
+  body.dark .header { background: #020617; border-color: #334155; }
+
+  .header .buttons { display: flex; gap: 10px; }
+
+  .messages {
+    flex: 1;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  .msg {
+    padding: 10px 15px;
+    border-radius: 20px;
+    max-width: 75%;
+    word-wrap: break-word;
+    line-height: 1.4;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .user { background: #2563eb; color: #fff; align-self: flex-end; border-bottom-right-radius: 0; }
+  .bot { background: #e5e7eb; color: #0f172a; align-self: flex-start; border-bottom-left-radius: 0; }
+  body.dark .bot { background: #1e293b; color: #e5e7eb; }
+
+  @keyframes fadeIn { from {opacity:0; transform: translateY(10px);} to {opacity:1; transform: translateY(0);} }
+
+  .input-box {
+    display: flex;
+    padding: 10px;
+    border-top: 1px solid #ddd;
+    background: #f1f1f1;
+  }
+  body.dark .input-box { background: #020617; border-color: #334155; }
+
+  .input-box input {
+    flex: 1;
+    padding: 12px 15px;
+    border-radius: 25px;
+    border: 1px solid #ccc;
+    outline: none;
+    font-size: 14px;
+    background: #fff;
+    color: #0f172a;
+    transition: background 0.3s, color 0.3s;
+  }
+  body.dark .input-box input { background: #1e293b; color: #e5e7eb; border-color: #334155; }
+
+  .input-box button {
+    margin-left: 10px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 25px;
+    background: #38bdf8;
+    color: #0f172a;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .input-box button:hover { background: #0ea5e9; }
+
+  /* History panel inside chat container */
+  .history-panel {
+    position: absolute;
+    top: 50px; /* below header */
+    left: 0;
+    height: calc(100% - 50px);
+    width: 250px;
+    background: #f1f1f1;
+    overflow-y: auto;
+    box-shadow: 3px 0 10px rgba(0,0,0,0.2);
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+    z-index: 10;
+    padding: 10px;
+  }
+  body.dark .history-panel { background: #0f172a; color: #e5e7eb; }
+  .history-panel.show { transform: translateX(0); }
+
+  .history-item { padding: 10px; margin-bottom: 5px; border-radius: 10px; cursor: pointer; background: #e5e7eb; color: #0f172a; }
+  body.dark .history-item { background: #1e293b; color: #e5e7eb; }
+  .history-item:hover { opacity: 0.8; }
+
+  .footer { text-align:center; font-size:12px; color:#94a3b8; padding:5px 0; }
+</style>
+</head>
+
+<body>
+  <div class="chat-container">
+    <div class="header">
+      <div class="buttons">
+        <button id="historyBtn">☰</button>
+        <button id="newChatBtn">🆕</button>
+      </div>
+      Neurovex AI 🤖
+      <button id="modeBtn">🌙</button>
+    </div>
+
+    <div class="history-panel" id="historyPanel"></div>
+    <div class="messages" id="messages"></div>
+
+    <div class="input-box">
+      <input id="input" placeholder="Type your message..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+    <div class="footer">© 2026 Neurovex AI</div>
+  </div>
+
+  <script>
+    const messagesDiv = document.getElementById("messages");
+    const input = document.getElementById("input");
+    const historyPanel = document.getElementById("historyPanel");
+    const historyBtn = document.getElementById("historyBtn");
+    const modeBtn = document.getElementById("modeBtn");
+    const newChatBtn = document.getElementById("newChatBtn");
+
+    let chatHistory = [];
+
+    // Toggle history panel
+    historyBtn.addEventListener("click", () => {
+      historyPanel.classList.toggle("show");
+      renderHistory();
+    });
+
+    // Toggle light/dark mode
+    modeBtn.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      modeBtn.innerText = document.body.classList.contains("dark") ? "☀️" : "🌙";
+    });
+
+    // New Chat
+    newChatBtn.addEventListener("click", () => {
+      messagesDiv.innerHTML = "";
+      chatHistory = [];
+    });
+
+    function addMessage(text, className) {
+      const div = document.createElement("div");
+      div.className = "msg " + className;
+      div.innerText = text;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      if (className === "user" || className === "bot") {
+        chatHistory.push({role: className, text});
+      }
+    }
+
+    function renderHistory() {
+      historyPanel.innerHTML = "";
+      chatHistory.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+        div.innerText = (item.role === "user" ? "You: " : "AI: ") + item.text;
+        div.addEventListener("click", () => {
+          input.value = item.text;
+          historyPanel.classList.remove("show");
+        });
+        historyPanel.appendChild(div);
+      });
+    }
+
+    async function sendMessage() {
+      const message = input.value.trim();
+      if (!message) return;
+
+      addMessage(message, "user");
+      input.value = "";
+
+      const typingDiv = document.createElement("div");
+      typingDiv.className = "msg bot";
+      typingDiv.innerText = "Neurovex AI is typing... 🤖";
+      messagesDiv.appendChild(typingDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ message })
+        });
+
+        const data = await res.json();
+        typingDiv.remove();
+        addMessage(data.reply, "bot");
+
+      } catch (err) {
+        typingDiv.remove();
+        addMessage("Error connecting to server ❌", "bot");
+        console.error(err);
+      }
+    }
+
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") sendMessage();
+    });
+  </script>
+</body>
+</html>
