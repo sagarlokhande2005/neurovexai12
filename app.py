@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import requests
+import os  # <- Added to read environment variable
 
 # --------------------------
 # Initialize Flask app
@@ -9,9 +10,9 @@ app = Flask(__name__)
 CORS(app)  # Allow frontend to call backend
 
 # --------------------------
-# OpenRouter API config
+# OpenRouter API config (SAFE)
 # --------------------------
-OPENROUTER_API_KEY = "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"  # <-- Replace with your key
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")  # <- Secure, fetch from environment
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL_NAME = "gpt-4o-mini"  # Change to your desired model
 
@@ -61,6 +62,9 @@ def chat():
         # -----------------------
         # Otherwise, call OpenRouter API
         # -----------------------
+        if not OPENROUTER_API_KEY:
+            return jsonify({"reply": "API key is missing. Please set OPENROUTER_API_KEY in environment."}), 500
+
         payload = {
             "model": MODEL_NAME,
             "messages": [{"role": "user", "content": user_message}]
